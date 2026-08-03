@@ -11,7 +11,7 @@ carries no patient identity.
 
 | File | Role |
 |---|---|
-| `ddpm.py` | The `DDPM` model and its noise schedule |
+| `ddpm.py` | `DDPM` — the noise-prediction network — and the linear beta schedule |
 | `train.py` | Training loop with checkpointing |
 | `inference.py` | Sampling from a trained checkpoint |
 | `bigquery_upload.py` | Pushing generated metadata to BigQuery |
@@ -47,6 +47,30 @@ a CUDA device.
 ## Status
 
 Complete training and sampling pipeline with tests. Trained checkpoints are not committed.
+
+The network is a four-layer convolutional stack with a timestep embedding, not a U-Net.
+That is enough to exercise the diffusion machinery end to end, and not enough for
+competitive sample quality — a U-Net with skip connections and attention is what the
+literature uses, and would be the next change worth making.
+
+### Notes from a correctness pass
+
+Three defects fixed, the first two fundamental:
+
+- **The model could not run a forward pass.** The timestep embedding was added to the
+  input: `self.network(x + t_embed)`. A `(B, 1, 64, 64)` image plus a `(B, 64, 1, 1)`
+  embedding broadcasts to `(B, 64, 64, 64)`, and the first convolution expects one channel.
+  The repository's own `test_ddpm.py` catches this, which means the tests had never been
+  run. The embedding is now added after the input convolution, where the channel counts
+  match.
+- **Training and sampling disagreed about the objective.** `train.py` minimised
+  `MSE(pred, images)`, teaching the network to output the clean image, while
+  `inference.py` used its output as the predicted *noise* in the reverse process. Even with
+  the forward pass fixed, the sampler could only have produced nonsense. Training now
+  supervises the noise.
+- **Both scripts hard-coded `.cuda()`** and left the beta schedule on the CPU, so indexing
+  it with a CUDA timestep tensor failed. Device is now a `--device` flag defaulting to auto,
+  and the schedule follows the model.
 
 ## Licence
 

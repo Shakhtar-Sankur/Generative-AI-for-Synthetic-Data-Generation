@@ -1,3 +1,4 @@
+import os
 import torch
 import argparse
 from torch.utils.data import DataLoader
@@ -14,6 +15,7 @@ def train(args):
     ])
     dataset = ImageFolder(args.dataset, transform=transform)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
+    os.makedirs(args.checkpoint_dir, exist_ok=True)
     model = DDPM().cuda()
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
     betas, _, alphas_cumprod = get_noise_schedule()
@@ -34,7 +36,8 @@ def train(args):
             optimizer.step()
             total_loss += loss.item()
         print(f"Epoch {epoch+1}/{args.epochs}, Loss: {total_loss/len(dataloader):.4f}")
-        torch.save(model.state_dict(), f"checkpoints/epoch_{epoch}.pth")
+        torch.save(model.state_dict(),
+                   os.path.join(args.checkpoint_dir, f"epoch_{epoch}.pth"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -42,5 +45,6 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=50)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--checkpoint-dir", default="models/checkpoints")
     args = parser.parse_args()
     train(args)

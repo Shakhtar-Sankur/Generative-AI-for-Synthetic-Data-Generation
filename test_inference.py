@@ -13,6 +13,10 @@ class TestInference(unittest.TestCase):
         )
         os.makedirs(self.args.output, exist_ok=True)
 
+    @unittest.skipUnless(
+        os.path.exists("models/checkpoints/epoch_49.pth"),
+        "no trained checkpoint; run train.py first (weights are not committed)",
+    )
     def test_generate_images(self):
         generate_images(self.args)
         generated_files = glob.glob(f"{self.args.output}/synthetic_*.png")

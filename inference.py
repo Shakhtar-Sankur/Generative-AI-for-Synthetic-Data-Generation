@@ -5,7 +5,10 @@ from ddpm import DDPM, get_noise_schedule
 from torchvision.utils import save_image
 
 def generate_images(args):
-    device = torch.device(args.device if args.device != 'auto'
+    # getattr rather than args.device: callers construct their own Namespace
+    # (the tests do), and a new flag should not break them.
+    requested = getattr(args, 'device', 'auto')
+    device = torch.device(requested if requested != 'auto'
                           else ('cuda' if torch.cuda.is_available() else 'cpu'))
     model = DDPM().to(device)
     model.load_state_dict(torch.load(args.checkpoint, map_location=device))

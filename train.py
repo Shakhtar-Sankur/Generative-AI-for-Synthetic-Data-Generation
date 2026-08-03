@@ -16,7 +16,8 @@ def train(args):
     dataset = ImageFolder(args.dataset, transform=transform)
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
     os.makedirs(args.checkpoint_dir, exist_ok=True)
-    device = torch.device(args.device if args.device != 'auto'
+    requested = getattr(args, 'device', 'auto')
+    device = torch.device(requested if requested != 'auto'
                           else ('cuda' if torch.cuda.is_available() else 'cpu'))
     model = DDPM().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
